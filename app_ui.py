@@ -1,6 +1,7 @@
 import re
 import threading
 import websocket
+import requests
 from tkinter import *
 from tkinter import messagebox
 from client import Client
@@ -120,7 +121,6 @@ class ChatApp:
 
     def check_ip_wrapper(self):
         ip = self.ent_ip.get()
-        # self.check_ip(ip)
         threading.Thread(target=self.check_ip, args=(ip,)).start()
 
     '''Проверка на корректность данных для подключения'''
@@ -224,14 +224,28 @@ class ChatApp:
         username = self.login_username.get()
         password = self.login_password.get()
 
-        response = None
+        response = requests.post('http://localhost:5000/login', json={'username': username, 'password': password})
 
+        if response.status_code == 200:
+            messagebox.showinfo("Info", "Login successful")
+            self.hide_all_frames()
+            self.show_general_frame() # основное окно чата
+
+        else:
+            messagebox.showerror("Ошибка", 'Вы ввели неверные данные!')
     def register(self):
         username = self.register_username.get()
         password = self.register_password.get()
         mail = self.register_email.get()
 
-        respose = None
+        response = requests.post('http://localhost:5000/register', json={'username': username, 'password': password, 'mail': mail})
+
+        if response.status_code == 200:
+            messagebox.showinfo("Info", "Registration successful")
+            self.hide_all_frames()
+            self.show_log_frame()
+        else:
+            messagebox.showerror("Ошибка", 'Пользователь не был зарегистрирован. Проверьте корректность данных!')
 
     '''Сокрытие всех фреймов'''
 
