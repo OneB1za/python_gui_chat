@@ -1,9 +1,10 @@
 import asyncio
+import json
 import socket
 import threading
 import websockets
 import ipaddress
-
+from tkinter import messagebox
 
 class Server:
     def __init__(self, gui):
@@ -12,6 +13,7 @@ class Server:
         self.connected = set()
         self.server_started = threading.Event()
         self.gui = gui
+        self.usernames = {}
 
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -31,19 +33,32 @@ class Server:
                 await websocket.send(message)
 
     async def chat_server(self, websocket, path):
-        ip = websocket.remote_address[0]
-        # conn_tuple = (websocket, ip)
-        self.connected = {conn for conn in self.connected if conn.remote_address[0] != ip}
-        self.connected.add(websocket)
-        try:
-            # await self.send_message_in_chat(message=f'Пользователь {ip} присоединился к чату.')
-            async for message in websocket:
-                await self.send_message_in_chat(message)
-        except websockets.exceptions.ConnectionClosedError:
-            print(f"Соединение с пользователем {ip} было закрыто.")
-        finally:
-            self.connected.remove(websocket)
-            await self.send_message_in_chat(f'Пользователь {ip} покинул чат.')
+
+        data = await websocket.recv()
+        username = json.loads(data).get('username')  # Получаем имя пользователя
+        #if not username:
+        #    messagebox.showerror('Авторизуйтесь чтобы войти в чат')
+
+        if username:
+            self.usernames[websocket] = username
+
+            ip = websocket.remote_address[0]
+
+            self.connected = {conn for conn in self.connected if conn.remote_address[0] != ip}
+            self.connected.add(websocket)
+
+            await self.send_message_in_chat(f'{username} присоединился к чату.')
+            try:
+                # await self.send_message_in_chat(message=f'Пользователь {ip} присоединился к чату.')
+                async for message in websocket:
+                    await self.send_message_in_chat(message)
+            except websockets.exceptions.ConnectionClosedError:
+                print(f"Соединение с пользователем {ip} было закрыто.")
+            finally:
+                self.connected.remove(websocket)
+                await self.send_message_in_chat(f'Пользователь {ip} покинул чат.')
+        else:
+            messagebox.showerror('Ошибка','Авторизуйтесь чтобы войти в чат')
 
     async def start_server(self):
         self.server = await websockets.serve(self.chat_server, host=self.get_local_ip(), port=8765)

@@ -23,6 +23,9 @@ class ChatApp:
         self.register_frame = Frame(self.master)
         self.chat_frame = Frame(self.master)  # NEW
 
+        self.is_authorized = False
+        self.username = None
+
         self.create_widgets()
 
 
@@ -43,6 +46,10 @@ class ChatApp:
         # Кнопка авторизации
         btn_login = Button(self.frame_system_buttons, text='Авторизоваться', command=self.show_log_frame)
         btn_login.pack(side=LEFT, padx=10)
+
+        #if self.is_authorized:
+        #    profile_btn = Button(self.frame_system_buttons, text='профиль', command='')
+        #    profile_btn.pack(pady=5)
 
         # авторизация
 
@@ -94,6 +101,10 @@ class ChatApp:
         back_button = Button(self.chat_frame, text='Выйти', command=self.stop_client)
         back_button.pack(pady=5)
 
+
+        # is_authorized
+
+
     '''Сообщение о запуске сервера'''
 
     def custom_message_box_server_start(self):
@@ -121,8 +132,10 @@ class ChatApp:
 
     def check_ip_wrapper(self):
         ip = self.ent_ip.get()
-        threading.Thread(target=self.check_ip, args=(ip,)).start()
-
+        if self.username:
+            threading.Thread(target=self.check_ip, args=(ip,)).start()
+        else:
+            messagebox.showerror('Ошибка', 'Авторизуйтесь чтобы войти в чат')
     '''Проверка на корректность данных для подключения'''
 
     def check_ip(self, ip):
@@ -211,13 +224,13 @@ class ChatApp:
     '''Создания экземпляра клиента при подключении к серверу'''
 
     def start_client(self, ip):
-        self.client_instance = Client(ip, app)
+        self.client_instance = Client(ip, app, self.username) # todo username
         self.client_instance.start_client_thread()
 
     def send_message_to_server(self):
         message = self.entry.get()
         if message.strip():  # Проверяем, что сообщение не пустое
-            self.client_instance.send_message(message)
+            self.client_instance.send_message(f'{self.username}:{message}')
             self.entry.delete(0, END)
 
     def login(self):
@@ -228,9 +241,10 @@ class ChatApp:
 
         if response.status_code == 200:
             messagebox.showinfo("Info", "Login successful")
-            self.hide_all_frames()
+            self.username = username
+            self.is_authorized = True
+            #self.hide_all_frames()
             self.show_general_frame() # основное окно чата
-
         else:
             messagebox.showerror("Ошибка", 'Вы ввели неверные данные!')
     def register(self):
@@ -242,7 +256,7 @@ class ChatApp:
 
         if response.status_code == 200:
             messagebox.showinfo("Info", "Registration successful")
-            self.hide_all_frames()
+           # self.hide_all_frames()
             self.show_log_frame()
         else:
             messagebox.showerror("Ошибка", 'Пользователь не был зарегистрирован. Проверьте корректность данных!')
